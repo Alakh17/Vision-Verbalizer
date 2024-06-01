@@ -20,10 +20,10 @@ app.add_middleware(
 )
 
 class captionModel:
-    async def __init__(self) -> None:
-        self.model = await load_model("best_model.h5", compile=False)
-        self.f_model = await self.feature_Model()
-        self.captions = await self.get_captions()
+    def __init__(self) -> None:
+        self.model =  load_model("best_model.h5", compile=False)
+        self.f_model =  self.feature_Model()
+        self.captions =  self.get_captions()
         self.max_length = max(len(caption.split()) for caption in self.captions)
         self.tokenizer = Tokenizer()
         self.tokenizer.fit_on_texts(self.captions)
