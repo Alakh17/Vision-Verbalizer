@@ -34,11 +34,11 @@ class captionModel:
         model = Model(inputs=model.inputs, outputs=model.layers[-2].output)
         return model
 
-    async def get_features(self, image) -> np.ndarray:
+    def get_features(self, image) -> np.ndarray:
         image = img_to_array(image)
         image = image.reshape((1, image.shape[0], image.shape[1], image.shape[2]))
         image = preprocess_input(image)
-        feature = await self.f_model.predict(image, verbose=0)
+        feature = self.f_model.predict(image, verbose=0)
         return feature
 
     def clean(self, mapping) -> None:
@@ -83,13 +83,13 @@ class captionModel:
                 return word
         return None
 
-    async def predict(self, img):
+    def predict(self, img):
         in_text = 'startseq'
         for i in range(self.max_length):
             sequence = self.tokenizer.texts_to_sequences([in_text])[0]
             sequence = pad_sequences([sequence], self.max_length)
-            image = await self.get_features(img)
-            yhat = await self.model.predict([image, sequence], verbose=0)
+            image = self.get_features(img)
+            yhat =  self.model.predict([image, sequence], verbose=0)
             yhat = np.argmax(yhat)
             word = self.idx_to_word(yhat)
             if word is None:
@@ -101,15 +101,15 @@ class captionModel:
 
 model = captionModel()
 
-async def read_imagefile(file) -> np.ndarray:
-    image = await load_img(BytesIO(file), target_size=(224, 224))
+def read_imagefile(file) -> np.ndarray:
+    image = load_img(BytesIO(file), target_size=(224, 224))
     return image
 
 @app.post("/predict")
 async def main(file: UploadFile = File(...)):
     try:
         image = read_imagefile(await file.read())
-        prediction = await model.predict(image)
+        prediction = model.predict(image)
         return JSONResponse(content={"prediction": prediction})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
