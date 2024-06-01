@@ -20,10 +20,10 @@ app.add_middleware(
 )
 
 class captionModel:
-    def __init__(self) -> None:
-        self.model = load_model("best_model.h5", compile=False)
-        self.f_model = self.feature_Model()
-        self.captions = self.get_captions()
+    async def __init__(self) -> None:
+        self.model = await load_model("best_model.h5", compile=False)
+        self.f_model = await self.feature_Model()
+        self.captions = await self.get_captions()
         self.max_length = max(len(caption.split()) for caption in self.captions)
         self.tokenizer = Tokenizer()
         self.tokenizer.fit_on_texts(self.captions)
@@ -34,11 +34,11 @@ class captionModel:
         model = Model(inputs=model.inputs, outputs=model.layers[-2].output)
         return model
 
-    def get_features(self, image) -> np.ndarray:
+    async def get_features(self, image) -> np.ndarray:
         image = img_to_array(image)
         image = image.reshape((1, image.shape[0], image.shape[1], image.shape[2]))
         image = preprocess_input(image)
-        feature = self.f_model.predict(image, verbose=0)
+        feature = await self.f_model.predict(image, verbose=0)
         return feature
 
     def clean(self, mapping) -> None:
@@ -83,13 +83,13 @@ class captionModel:
                 return word
         return None
 
-    def predict(self, img):
+    async def predict(self, img):
         in_text = 'startseq'
         for i in range(self.max_length):
             sequence = self.tokenizer.texts_to_sequences([in_text])[0]
             sequence = pad_sequences([sequence], self.max_length)
-            image = self.get_features(img)
-            yhat = self.model.predict([image, sequence], verbose=0)
+            image = await self.get_features(img)
+            yhat = await self.model.predict([image, sequence], verbose=0)
             yhat = np.argmax(yhat)
             word = self.idx_to_word(yhat)
             if word is None:
@@ -101,15 +101,15 @@ class captionModel:
 
 model = captionModel()
 
-def read_imagefile(file) -> np.ndarray:
-    image = load_img(BytesIO(file), target_size=(224, 224))
+async def read_imagefile(file) -> np.ndarray:
+    image = await load_img(BytesIO(file), target_size=(224, 224))
     return image
 
 @app.post("/predict")
 async def main(file: UploadFile = File(...)):
     try:
         image = read_imagefile(await file.read())
-        prediction = model.predict(image)
+        prediction = await model.predict(image)
         return JSONResponse(content={"prediction": prediction})
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
